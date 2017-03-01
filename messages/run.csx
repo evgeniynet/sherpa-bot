@@ -41,14 +41,15 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				String userMessage = activity.Text;
 				bool isNumeric = false;
 				bool isSearch = userMessage.StartsWith("search", StringComparison.InvariantCultureIgnoreCase);
+				bool isLogs = userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase);
 				int n;
 			    isNumeric = int.TryParse(userMessage, out n);
-				if (!userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase) && !isSearch)
+				if (!isLogs && !isSearch)
 				{
-				if (!isNumeric)
+				if (!isNumeric) 
 				{
-				    //userData.SetProperty<int>("Ticket", 0);
-				    //await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+				    userData.SetProperty<int>("Ticket", 0);
+				    await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 					
 					await Conversation.SendAsync(activity, () => new BasicQnAMakerDialog());
 					break;
@@ -58,8 +59,21 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				String json = "", ticket = "";
 				dynamic item;
 				
-				if (userMessage == "logs" && userData.GetProperty<int>("Ticket") > 0)
-				ticket = userData.GetProperty<int>("Ticket").ToString ();
+				if (isLogs)
+				{
+				    ticket = userMessage.Substring(4).Trim();
+				    if (int.TryParse(ticket, out n))
+				    {
+				        userData.SetProperty<int>("Ticket", n);
+					    await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+				    }
+				    else if (userData.GetProperty<int>("Ticket") > 0)
+				    {
+				    ticket = userData.GetProperty<int>("Ticket").ToString();
+				    }
+				    else
+				    ticket = "";
+				}
 				else if (isNumeric)
                 ticket = userMessage;
                 else if (isSearch)
@@ -84,7 +98,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 					}
 				}
 				catch (WebException ex)
-				{/*
+				{
+				/*
     if (ex.Status == WebExceptionStatus.ProtocolError && ex.Response != null)
     {
         var resp = (HttpWebResponse)ex.Response;
@@ -102,11 +117,16 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				var reply1 = activity.CreateReply();
 				reply1.Type = ActivityTypes.Message;
 				reply1.ChannelId = activity.ChannelId;
-				if (ticket == "" && (userMessage == "logs" || isSearch))
-				{
-				    reply1.Text += isSearch ? "**Cannot** search Tickets" : "**Cannot** show Ticket Logs";
+				if (String.IsNullOrEmpty(json) && ticket != ""){
+					reply1.Text += "**Not Found** Ticket #"+ticket +"";
 					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Please type " + (isSearch ? "search string" : "Ticket **number**") + " first";
+					reply1.Text += "Please try again or Create New Ticket";
+				}
+				else if (ticket == "" && (isLogs || isSearch))
+				{
+				    reply1.Text += isSearch ? "**Cannot** search Tickets" : "**Cannot** found Ticket Logs";
+					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+					reply1.Text += "Please type " + (isSearch ? "search string" : "correct Ticket **number**") + " first";
 				}
 				else if (isSearch)
 				{
@@ -134,9 +154,9 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 			        
 				    }
 				}
-				else if (userData.GetProperty<int>("Ticket") > 0 && userMessage == "logs"){
+				else if (userData.GetProperty<int>("Ticket") > 0 && isLogs){
 					item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-					reply1.Text += "**Logs** of Ticket #"+ticket +":";
+					reply1.Text += "Logs of *" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +" :";
 					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
 					reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
 			        
@@ -146,11 +166,6 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 					    reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
 					    reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
 			        }
-				}
-				else if (String.IsNullOrEmpty(json) || json == "Tickets not found"){
-					reply1.Text += "**Not Found** Ticket #"+ticket +"";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Please try again or Create New Ticket";
 				}
 				else 
 				{
