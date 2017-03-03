@@ -156,7 +156,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				}
 				else if (userData.GetProperty<int>("Ticket") > 0 && isLogs){
 					item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-					reply1.Text += "Logs of *" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +" :";
+					reply1.Text += "Logs of [*" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +"](http://app.sherpadesk.com/?tkt=" + (string)item.key + ") :";
 					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
 					reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
 			        
@@ -172,12 +172,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 					userData.SetProperty<int>("Ticket", n);
 					await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
 					item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-					reply1.Text += "Info about Ticket **#"+ticket +"**";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Status: **" +  (string)item.status +  "**";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Subject: **" + (string)item.subject + "**";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+					reply1.Text += "Info about [*" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +"](http://app.sherpadesk.com/?tkt=" + (string)item.key + "):";
+					reply1.Text += $" {Environment.NewLine} {Environment.NewLine}";
 					reply1.Text += "Last reply *at " + ((string)item.ticketlogs[0].record_date).Substring(0,19) + "*: `" + (string)item.ticketlogs[0].note + "`";
 					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
 				    reply1.Text += "Type **logs** to view full story";
