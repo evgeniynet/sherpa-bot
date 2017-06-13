@@ -1,0 +1,14 @@
+﻿<Properties StartupItem="%USERPROFILE%/AppData/Roaming/npm/node_modules/azure-functions-cli/bin/Func.exe">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="messages/run.csx">
+    <Files>
+      <File FileName="commands.json" Line="1" Column="1" />
+      <File FileName="messages/run.csx" Line="222" Column="1" />
+      <File FileName="EmptyClass.cs" Line="11" Column="28" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

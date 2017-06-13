@@ -8,6 +8,7 @@ namespace Application
 		{
 			string test;
 			int rr;
+			test.Substring(6).Length ()
 			rr.ToString ();
 			foreach (var post in posts) {
 			}

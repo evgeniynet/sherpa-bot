@@ -10,7 +10,7 @@ using Microsoft.Bot.Builder.Azure;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 
-
+ 
 public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 {
 	log.Info($"Webhook was triggered!");
@@ -43,6 +43,31 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				bool isSearch = userMessage.StartsWith("search", StringComparison.InvariantCultureIgnoreCase);
 				bool isLogs = userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase);
 				int n;
+				bool isGroup = userMessage.StartsWith("group", StringComparison.InvariantCultureIgnoreCase);
+
+				if (isGroup){
+				var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+				var botAccount = new ChannelAccount(activity.Recipient.Id, "sherpa-bot");	
+
+				List<ChannelAccount> participants = new List<ChannelAccount>();
+				participants.Add(new ChannelAccount("bitshopeugene", "Joe the Engineer"));
+				participants.Add(new ChannelAccount("chov61", "Sara in Finance"));
+
+				ConversationParameters cpMessage = new ConversationParameters(true, botAccount, participants, "Discussion1");
+				var conversationId = await connector.Conversations.CreateConversationAsync(cpMessage);
+
+				/*IMessageActivity message = Activity.CreateMessageActivity();
+				message.From = botAccount;
+				message.Recipient = new ChannelAccount("bitshopeugene", "Joe the Engineer");
+				message.Conversation = new ConversationAccount(id: conversationId.Id);
+				message.ChannelId = activity.ChannelId;
+				message.Text = "Hello, everyone!";
+				message.Locale = "en-Us";
+
+				await connector.Conversations.SendToConversationAsync((Activity)message);
+				*/
+				break; 
+				}
 			    isNumeric = int.TryParse(userMessage, out n);
 				if (!isLogs && !isSearch)
 				{
