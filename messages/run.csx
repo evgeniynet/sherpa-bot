@@ -2,6 +2,7 @@
 #load "BasicQnAMakerDialog.csx"
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using Newtonsoft.Json;
@@ -10,292 +11,251 @@ using Microsoft.Bot.Builder.Azure;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 
-private async Task<string> GetSkypeGroup(string ticket)
+private static async Task<string> GetSkypeGroup(string ticket)
 {
     using (var webClient = new WebClient())
     {
-        var url = $"https://api.ghostinspector.com/v1/tests/5941050ff5145174f8de5e94/execute/?apiKey=63e4e972d8538a7764efcbf2b19e218ad697a14f&ticket="+ticket;
+        var url = $"https://api.ghostinspector.com/v1/tests/5941050ff5145174f8de5e94/execute/?apiKey=63e4e972d8538a7764efcbf2b19e218ad697a14f&ticket=" + ticket;
         return await webClient.DownloadStringTaskAsync(url);
     }
 }
- 
+
 public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 {
-	log.Info($"Webhook was triggered!");
+    log.Info($"Webhook was triggered!");
 
-	// Initialize the azure bot
-	using (BotService.Initialize())
-	{
-		// Deserialize the incoming activity
-		string jsonContent = await req.Content.ReadAsStringAsync();
-		var activity = JsonConvert.DeserializeObject<Activity>(jsonContent);
-
-		// authenticate incoming request and add activity.ServiceUrl to MicrosoftAppCredentials.TrustedHostNames
-		// if request is authenticated
-		if (!await BotService.Authenticator.TryAuthenticateAsync(req, new[] { activity }, CancellationToken.None))
-		{
-			return BotAuthenticator.GenerateUnauthorizedResponse(req);
-		}
-
-		if (activity != null)
-		{
-			// one of these will have an interface and process it
-			switch (activity.GetActivityType())
-			{
-			case ActivityTypes.Message:
-				StateClient stateClient = activity.GetStateClient();
-				BotData userData = await stateClient.BotState.GetUserDataAsync(activity.ChannelId, activity.From.Id);
-
-				String userMessage = activity.Text;
-				bool isNumeric = false;
-				bool isSearch = userMessage.StartsWith("search", StringComparison.InvariantCultureIgnoreCase);
-				bool isLogs = userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase);
-				int n;
-				bool isGroup = userMessage.StartsWith("group", StringComparison.InvariantCultureIgnoreCase);
-
-				if (isGroup){
-				var skypeJson = await GetSkypeGroup(activity.Text);
-
-
-var replys = activity.CreateReply();
-replys.Type = ActivityTypes.Message;
-replys.ChannelId = activity.ChannelId;
-if (!String.IsNullOrEmpty(skypeJson)){
-				    dynamic skypeItem = Newtonsoft.Json.JsonConvert.DeserializeObject(skypeJson);
-				    if ((string)skypeItem.code == "SUCCESS")
-				    {
-				        string joinSkype = (string)skypeItem.data.extractions.joinLink;
-				        replys.Text += "Url  "+ joinSkype +"";
-				        replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-				        replys.Text += "Join discussion of Ticket #333 by link [**" + joinSkype + "** ](" + joinSkype + ")";
-					
-					replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-					var clients = new ConnectorClient(new Uri(activity.ServiceUrl));
-				await clients.Conversations.ReplyToActivityAsync(replys);
-			        }
-			        }
-					/*
-				var userAccount = new ChannelAccount(activity.From.Id, "user");
-                var botAccount = new ChannelAccount(activity.Recipient.Id, "bot");
-                var nast = new ChannelAccount("29:1D6f1TJkoaDR9Gz0cDeJUmaZZ-e5WZXK-f94OITukGSU", "Sara in Finance");
-                var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
-
-                // Create a new message.
-                IMessageActivity message = Activity.CreateMessageActivity();
-                List <ChannelAccount> list = new List<ChannelAccount>();
-                list.Add(userAccount);
-                list.Add(nast);
-                list.Add(botAccount);
-
-                var conversationId = (await connector.Conversations.CreateConversationAsync(new ConversationParameters(true, botAccount, list, "test"))).Id;
-                //var conversationId = (await connector.Conversations.CreateDirectConversationAsync(botAccount, nast)).Id;
-
-                // Set the address-related properties in the message and send the message.
-                message.From = botAccount;
-                message.Recipient = nast;
-                message.Conversation = new ConversationAccount(id: conversationId);
-                message.Text = "you are " + activity.From.Id;
-                message.Locale = "en-Us";
-                await connector.Conversations.SendToConversationAsync((Activity)message);
-                
-break;
-*/
-/*
-				//if (isGroup){
-			    var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
-                var botAccount = new ChannelAccount(activity.Recipient.Id, "sherpa-bot");
-
-                List<ChannelAccount> participants = new List<ChannelAccount>();
-                participants.Add(new ChannelAccount("bitshopeugene", "Joe the Engineer"));
-                participants.Add(new ChannelAccount("chov61", "Sara in Finance"));
-
-                ConversationParameters cpMessage = new ConversationParameters(true, botAccount, participants, "Discussion1");
-                var conversationId = await connector.Conversations.CreateConversationAsync(cpMessage);
-
-                IMessageActivity message = Activity.CreateMessageActivity();
-				message.From = botAccount;
-				message.Recipient = new ChannelAccount("bitshopeugene", "Joe the Engineer");
-				message.Conversation = new ConversationAccount(id: conversationId.Id);
-				message.ChannelId = activity.ChannelId;
-				message.Text = "Hello, everyone!";
-				message.Locale = "en-Us";
-
-				await connector.Conversations.SendToConversationAsync((Activity)message);
-				break; 
-				//}
-				*/
-				}
-			    isNumeric = int.TryParse(userMessage, out n);
-				if (!isLogs && !isSearch)
-				{
-				if (!isNumeric) 
-				{
-				    userData.SetProperty<int>("Ticket", 0);
-				    await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
-					
-					await Conversation.SendAsync(activity, () => new BasicQnAMakerDialog());
-					break;
-				}
-				}
-
-				String json = "", ticket = "";
-				dynamic item;
-				
-				if (isLogs)
-				{
-				    ticket = userMessage.Substring(4).Trim();
-				    if (int.TryParse(ticket, out n))
-				    {
-				        userData.SetProperty<int>("Ticket", n);
-					    await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
-				    }
-				    else if (userData.GetProperty<int>("Ticket") > 0)
-				    {
-				    ticket = userData.GetProperty<int>("Ticket").ToString();
-				    }
-				    else
-				    ticket = "";
-				}
-				else if (isNumeric)
-                ticket = userMessage;
-                else if (isSearch)
-                ticket = userMessage.Substring(6).Trim();
-                
-                if (ticket != ""){
-				try{
-					using (var client2 = new WebClient())
-					{
-						client2.Credentials = new NetworkCredential("zwoja4-ms2asm", "re36rym3mjqxm8ej2cscfajmxpsew33m");
-						String url = "http://api.sherpadesk.com/";
-						if (isSearch)
-						    url += $"tickets?query=all&search={ticket}*&limit=20&";
-						else
-						    url += $"tickets/{ticket}?";
-						url += "format=json";
-						json = client2.DownloadString(url);
-						//var activity = JsonConvert.DeserializeObject<Activity>(jsonContent);
-						//var serializer = new JavaScriptSerializer();
-						//SomeModel model = serializer.Deserialize<SomeModel>(json);
-						// TODO: do something with the model
-					}
-				}
-				catch (WebException ex)
-				{
-				/*
-    if (ex.Status == WebExceptionStatus.ProtocolError && ex.Response != null)
+    // Initialize the azure bot
+    using (BotService.Initialize())
     {
-        var resp = (HttpWebResponse)ex.Response;
-        if (resp.StatusCode == HttpStatusCode.NotFound) // HTTP 404
-        {
-            //the page was not found, continue with next in the for loop
-        }
-    }
-    //throw any other exception - this should not occur
-    throw;
-    */
-				}
-                }
-				
-				var reply1 = activity.CreateReply();
-				reply1.Type = ActivityTypes.Message;
-				reply1.ChannelId = activity.ChannelId;
-				if (String.IsNullOrEmpty(json) && ticket != ""){
-					reply1.Text += "**Not Found** Ticket #"+ticket +"";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Please try again or Create New Ticket";
-				}
-				else if (ticket == "" && (isLogs || isSearch))
-				{
-				    reply1.Text += isSearch ? "**Cannot** search Tickets" : "**Cannot** found Ticket Logs";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Please type " + (isSearch ? "search string" : "correct Ticket **number**") + " first";
-				}
-				else if (isSearch)
-				{
-				    item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-				    if (item.Count == 0)
-				    {
-				        reply1.Text += "**Not Found** Ticket #"+ticket +"";
-					    reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					    reply1.Text += "Please try again or Create New Ticket";
-				    }
-				    else
-				    {
-				        reply1.Text += "Found **"+item.Count +"** Ticket(s):";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-			        
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					for (int i = 0; i < item.Count; i++) {
-					    reply1.Text += "*" + (string)item[i].status + "* #**" + (string)item[i].number + "** " + (string)item[i].subject;
-					    reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					    reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-			        }
-				    reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += $"To view ticket info type its number";
-			        
-				    }
-				}
-				else if (userData.GetProperty<int>("Ticket") > 0 && isLogs){
-					item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-					reply1.Text += "Logs of [*" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +"](http://app.sherpadesk.com/?tkt=" + (string)item.key + ") :";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-			        
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					for (int i = 0; i < item.ticketlogs.Count; i++) {
-					    reply1.Text += "*" + ((string)item.ticketlogs[i].record_date).Substring(0,19) + "*: `" + (string)item.ticketlogs[i].note + "`";
-					    reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-					    reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
-			        }
-				}
-				else 
-				{
-					userData.SetProperty<int>("Ticket", n);
-					await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
-					item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-					reply1.Text += "Info about [*" + (string)item.status + "* Ticket #**"+ticket +"** "+ (string)item.subject +"](http://app.sherpadesk.com/?tkt=" + (string)item.key + "):";
-					reply1.Text += $" {Environment.NewLine} {Environment.NewLine}";
-					reply1.Text += "Last reply *at " + ((string)item.ticketlogs[0].record_date).Substring(0,19) + "*: `" + (string)item.ticketlogs[0].note + "`";
-					reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
-				    reply1.Text += "Type **logs** to view full story";
-				}             
+        // Deserialize the incoming activity
+        string jsonContent = await req.Content.ReadAsStringAsync();
+        var activity = JsonConvert.DeserializeObject<Activity>(jsonContent);
 
-				var client1 = new ConnectorClient(new Uri(activity.ServiceUrl));
-				await client1.Conversations.ReplyToActivityAsync(reply1);
-				break;
-			case ActivityTypes.ConversationUpdate:
-				var client = new ConnectorClient(new Uri(activity.ServiceUrl));
-				IConversationUpdateActivity update = activity;
-				if (update.MembersAdded.Any())
-				{
-					var reply = activity.CreateReply();
-					reply.Type = ActivityTypes.Message;
-					reply.ChannelId = activity.ChannelId;
-					var newMembers = update.MembersAdded?.Where(t => t.Id != activity.Recipient.Id);
-					foreach (var newMember in newMembers)
-					{
-						reply.Text = "Welcome";
-						if (!string.IsNullOrEmpty(newMember.Name))
-						{
-							reply.Text += $" {newMember.Name}";
-						}
-						reply.Text += "!";
-						await client.Conversations.ReplyToActivityAsync(reply);
-					}
-				}
-				break;
-			case ActivityTypes.ContactRelationUpdate:
-			case ActivityTypes.Typing:
-			case ActivityTypes.DeleteUserData:
-			case ActivityTypes.Ping:
-			default:
-				log.Error($"Unknown activity type ignored: {activity.GetActivityType()}");
-				break;
-			}
-		}
-		return req.CreateResponse(HttpStatusCode.Accepted);
-	}
+        // authenticate incoming request and add activity.ServiceUrl to MicrosoftAppCredentials.TrustedHostNames
+        // if request is authenticated
+        if (!await BotService.Authenticator.TryAuthenticateAsync(req, new[] { activity }, CancellationToken.None))
+        {
+            return BotAuthenticator.GenerateUnauthorizedResponse(req);
+        }
+
+        if (activity != null)
+        {
+            // one of these will have an interface and process it
+            switch (activity.GetActivityType())
+            {
+                case ActivityTypes.Message:
+                    StateClient stateClient = activity.GetStateClient();
+                    BotData userData = await stateClient.BotState.GetUserDataAsync(activity.ChannelId, activity.From.Id);
+
+                    String userMessage = activity.Text;
+                    bool isNumeric = false;
+                    bool isSearch = userMessage.StartsWith("search", StringComparison.InvariantCultureIgnoreCase);
+                    bool isLogs = userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase);
+                    int n;
+                    bool isGroup = userMessage.StartsWith("group", StringComparison.InvariantCultureIgnoreCase);
+
+                    if (isGroup)
+                    {
+                        var skypeJson = await GetSkypeGroup(activity.Text);
+
+
+                        var replys = activity.CreateReply();
+                        replys.Type = ActivityTypes.Message;
+                        replys.ChannelId = activity.ChannelId;
+                        if (!String.IsNullOrEmpty(skypeJson))
+                        {
+                            dynamic skypeItem = Newtonsoft.Json.JsonConvert.DeserializeObject(skypeJson);
+                            if ((string)skypeItem.code == "SUCCESS")
+                            {
+                                string joinSkype = (string)skypeItem.data.extractions.joinLink;
+                                replys.Text += "Url  " + joinSkype + "";
+                                replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                                replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+                                replys.Text += "Join discussion of Ticket #333 by link [**" + joinSkype + "** ](" + joinSkype + ")";
+
+                                replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                                replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+                                var clients = new ConnectorClient(new Uri(activity.ServiceUrl));
+                                await clients.Conversations.ReplyToActivityAsync(replys);
+                            }
+                        }
+                    }
+
+                    isNumeric = int.TryParse(userMessage, out n);
+                    if (!isLogs && !isSearch)
+                    {
+                        if (!isNumeric)
+                        {
+                            userData.SetProperty<int>("Ticket", 0);
+                            await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+
+                            await Conversation.SendAsync(activity, () => new BasicQnAMakerDialog());
+                            break;
+                        }
+                    }
+
+                    String json = "", ticket = "";
+                    dynamic item;
+
+                    if (isLogs)
+                    {
+                        ticket = userMessage.Substring(4).Trim();
+                        if (int.TryParse(ticket, out n))
+                        {
+                            userData.SetProperty<int>("Ticket", n);
+                            await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+                        }
+                        else if (userData.GetProperty<int>("Ticket") > 0)
+                        {
+                            ticket = userData.GetProperty<int>("Ticket").ToString();
+                        }
+                        else
+                            ticket = "";
+                    }
+                    else if (isNumeric)
+                        ticket = userMessage;
+                    else if (isSearch)
+                        ticket = userMessage.Substring(6).Trim();
+
+                    if (ticket != "")
+                    {
+                        try
+                        {
+                            using (var client2 = new WebClient())
+                            {
+                                client2.Credentials = new NetworkCredential("zwoja4-ms2asm", "re36rym3mjqxm8ej2cscfajmxpsew33m");
+                                String url = "http://api.sherpadesk.com/";
+                                if (isSearch)
+                                    url += $"tickets?query=all&search={ticket}*&limit=20&";
+                                else
+                                    url += $"tickets/{ticket}?";
+                                url += "format=json";
+                                json = client2.DownloadString(url);
+                                //var activity = JsonConvert.DeserializeObject<Activity>(jsonContent);
+                                //var serializer = new JavaScriptSerializer();
+                                //SomeModel model = serializer.Deserialize<SomeModel>(json);
+                                // TODO: do something with the model
+                            }
+                        }
+                        catch (WebException ex)
+                        {
+                            /*
+                if (ex.Status == WebExceptionStatus.ProtocolError && ex.Response != null)
+                {
+                    var resp = (HttpWebResponse)ex.Response;
+                    if (resp.StatusCode == HttpStatusCode.NotFound) // HTTP 404
+                    {
+                        //the page was not found, continue with next in the for loop
+                    }
+                }
+                //throw any other exception - this should not occur
+                throw;
+                */
+                        }
+                    }
+
+                    var reply1 = activity.CreateReply();
+                    reply1.Type = ActivityTypes.Message;
+                    reply1.ChannelId = activity.ChannelId;
+                    if (String.IsNullOrEmpty(json) && ticket != "")
+                    {
+                        reply1.Text += "**Not Found** Ticket #" + ticket + "";
+                        reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                        reply1.Text += "Please try again or Create New Ticket";
+                    }
+                    else if (ticket == "" && (isLogs || isSearch))
+                    {
+                        reply1.Text += isSearch ? "**Cannot** search Tickets" : "**Cannot** found Ticket Logs";
+                        reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                        reply1.Text += "Please type " + (isSearch ? "search string" : "correct Ticket **number**") + " first";
+                    }
+                    else if (isSearch)
+                    {
+                        item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                        if (item.Count == 0)
+                        {
+                            reply1.Text += "**Not Found** Ticket #" + ticket + "";
+                            reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                            reply1.Text += "Please try again or Create New Ticket";
+                        }
+                        else
+                        {
+                            reply1.Text += "Found **" + item.Count + "** Ticket(s):";
+                            reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                            reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+
+                            reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                            for (int i = 0; i < item.Count; i++)
+                            {
+                                reply1.Text += "*" + (string)item[i].status + "* #**" + (string)item[i].number + "** " + (string)item[i].subject;
+                                reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                                reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+                            }
+                            reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                            reply1.Text += $"To view ticket info type its number";
+
+                        }
+                    }
+                    else if (userData.GetProperty<int>("Ticket") > 0 && isLogs)
+                    {
+                        item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                        reply1.Text += "Logs of [*" + (string)item.status + "* Ticket #**" + ticket + "** " + (string)item.subject + "](http://app.sherpadesk.com/?tkt=" + (string)item.key + ") :";
+                        reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                        reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+
+                        reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                        for (int i = 0; i < item.ticketlogs.Count; i++)
+                        {
+                            reply1.Text += "*" + ((string)item.ticketlogs[i].record_date).Substring(0, 19) + "*: `" + (string)item.ticketlogs[i].note + "`";
+                            reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                            reply1.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+                        }
+                    }
+                    else
+                    {
+                        userData.SetProperty<int>("Ticket", n);
+                        await stateClient.BotState.SetUserDataAsync(activity.ChannelId, activity.From.Id, userData);
+                        item = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                        reply1.Text += "Info about [*" + (string)item.status + "* Ticket #**" + ticket + "** " + (string)item.subject + "](http://app.sherpadesk.com/?tkt=" + (string)item.key + "):";
+                        reply1.Text += $" {Environment.NewLine} {Environment.NewLine}";
+                        reply1.Text += "Last reply *at " + ((string)item.ticketlogs[0].record_date).Substring(0, 19) + "*: `" + (string)item.ticketlogs[0].note + "`";
+                        reply1.Text += $"{Environment.NewLine} {Environment.NewLine}";
+                        reply1.Text += "Type **logs** to view full story";
+                    }
+
+                    var client1 = new ConnectorClient(new Uri(activity.ServiceUrl));
+                    await client1.Conversations.ReplyToActivityAsync(reply1);
+                    break;
+                case ActivityTypes.ConversationUpdate:
+                    var client = new ConnectorClient(new Uri(activity.ServiceUrl));
+                    IConversationUpdateActivity update = activity;
+                    if (update.MembersAdded.Any())
+                    {
+                        var reply = activity.CreateReply();
+                        reply.Type = ActivityTypes.Message;
+                        reply.ChannelId = activity.ChannelId;
+                        var newMembers = update.MembersAdded?.Where(t => t.Id != activity.Recipient.Id);
+                        foreach (var newMember in newMembers)
+                        {
+                            reply.Text = "Welcome";
+                            if (!string.IsNullOrEmpty(newMember.Name))
+                            {
+                                reply.Text += $" {newMember.Name}";
+                            }
+                            reply.Text += "!";
+                            await client.Conversations.ReplyToActivityAsync(reply);
+                        }
+                    }
+                    break;
+                case ActivityTypes.ContactRelationUpdate:
+                case ActivityTypes.Typing:
+                case ActivityTypes.DeleteUserData:
+                case ActivityTypes.Ping:
+                default:
+                    log.Error($"Unknown activity type ignored: {activity.GetActivityType()}");
+                    break;
+            }
+        }
+        return req.CreateResponse(HttpStatusCode.Accepted);
+    }
 }
