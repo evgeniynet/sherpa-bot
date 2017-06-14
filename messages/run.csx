@@ -56,7 +56,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 
                     if (isGroup)
                     {
-                        var skypeJson = await GetSkypeGroup(activity.Text);
+                        var skypeJson = await GetSkypeGroup("6810");
 
 
                         var replys = activity.CreateReply();
