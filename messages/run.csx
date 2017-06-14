@@ -10,6 +10,14 @@ using Microsoft.Bot.Builder.Azure;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 
+private async Task<string> GetSkypeGroup(string ticket)
+{
+    using (var webClient = new WebClient())
+    {
+        var url = $"https://api.ghostinspector.com/v1/tests/5941050ff5145174f8de5e94/execute/?apiKey=63e4e972d8538a7764efcbf2b19e218ad697a14f&ticket="+ticket;
+        return await webClient.DownloadStringTaskAsync(url);
+    }
+}
  
 public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 {
@@ -46,17 +54,67 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				bool isGroup = userMessage.StartsWith("group", StringComparison.InvariantCultureIgnoreCase);
 
 				if (isGroup){
-				var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
-				var botAccount = new ChannelAccount(activity.Recipient.Id, "sherpa-bot");	
+				var skypeJson = await GetSkypeGroup(activity.Text);
 
-				List<ChannelAccount> participants = new List<ChannelAccount>();
-				participants.Add(new ChannelAccount("bitshopeugene", "Joe the Engineer"));
-				participants.Add(new ChannelAccount("chov61", "Sara in Finance"));
 
-				ConversationParameters cpMessage = new ConversationParameters(true, botAccount, participants, "Discussion1");
-				var conversationId = await connector.Conversations.CreateConversationAsync(cpMessage);
+var replys = activity.CreateReply();
+replys.Type = ActivityTypes.Message;
+replys.ChannelId = activity.ChannelId;
+if (!String.IsNullOrEmpty(skypeJson)){
+				    dynamic skypeItem = Newtonsoft.Json.JsonConvert.DeserializeObject(skypeJson);
+				    if ((string)skypeItem.code == "SUCCESS")
+				    {
+				        string joinSkype = (string)skypeItem.data.extractions.joinLink;
+				        replys.Text += "Url  "+ joinSkype +"";
+				        replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
+					replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+				        replys.Text += "Join discussion of Ticket #333 by link [**" + joinSkype + "** ](" + joinSkype + ")";
+					
+					replys.Text += $"{Environment.NewLine} {Environment.NewLine}";
+					replys.Text += $" --- {Environment.NewLine} {Environment.NewLine}";
+					var clients = new ConnectorClient(new Uri(activity.ServiceUrl));
+				await clients.Conversations.ReplyToActivityAsync(replys);
+			        }
+			        }
+					/*
+				var userAccount = new ChannelAccount(activity.From.Id, "user");
+                var botAccount = new ChannelAccount(activity.Recipient.Id, "bot");
+                var nast = new ChannelAccount("29:1D6f1TJkoaDR9Gz0cDeJUmaZZ-e5WZXK-f94OITukGSU", "Sara in Finance");
+                var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
 
-				/*IMessageActivity message = Activity.CreateMessageActivity();
+                // Create a new message.
+                IMessageActivity message = Activity.CreateMessageActivity();
+                List <ChannelAccount> list = new List<ChannelAccount>();
+                list.Add(userAccount);
+                list.Add(nast);
+                list.Add(botAccount);
+
+                var conversationId = (await connector.Conversations.CreateConversationAsync(new ConversationParameters(true, botAccount, list, "test"))).Id;
+                //var conversationId = (await connector.Conversations.CreateDirectConversationAsync(botAccount, nast)).Id;
+
+                // Set the address-related properties in the message and send the message.
+                message.From = botAccount;
+                message.Recipient = nast;
+                message.Conversation = new ConversationAccount(id: conversationId);
+                message.Text = "you are " + activity.From.Id;
+                message.Locale = "en-Us";
+                await connector.Conversations.SendToConversationAsync((Activity)message);
+                
+break;
+*/
+/*
+				//if (isGroup){
+			    var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+                var botAccount = new ChannelAccount(activity.Recipient.Id, "sherpa-bot");
+
+                List<ChannelAccount> participants = new List<ChannelAccount>();
+                participants.Add(new ChannelAccount("bitshopeugene", "Joe the Engineer"));
+                participants.Add(new ChannelAccount("chov61", "Sara in Finance"));
+
+                ConversationParameters cpMessage = new ConversationParameters(true, botAccount, participants, "Discussion1");
+                var conversationId = await connector.Conversations.CreateConversationAsync(cpMessage);
+
+                IMessageActivity message = Activity.CreateMessageActivity();
 				message.From = botAccount;
 				message.Recipient = new ChannelAccount("bitshopeugene", "Joe the Engineer");
 				message.Conversation = new ConversationAccount(id: conversationId.Id);
@@ -65,8 +123,9 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 				message.Locale = "en-Us";
 
 				await connector.Conversations.SendToConversationAsync((Activity)message);
-				*/
 				break; 
+				//}
+				*/
 				}
 			    isNumeric = int.TryParse(userMessage, out n);
 				if (!isLogs && !isSearch)
