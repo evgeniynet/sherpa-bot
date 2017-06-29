@@ -47,6 +47,9 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 BotData userData = await stateClient.BotState.GetUserDataAsync(activity.ChannelId, activity.From.Id);
 
                 String userMessage = activity.Text;
+                if (userMessage.StartsWith("@sd"))
+                   userMessage = userMessage.Substring(3).Trim();
+
                 bool isNumeric = false;
                 bool isSearch = userMessage.StartsWith("search", StringComparison.InvariantCultureIgnoreCase);
                 bool isLogs = userMessage.StartsWith("logs", StringComparison.InvariantCultureIgnoreCase);
