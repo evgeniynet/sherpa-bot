@@ -1,0 +1,82 @@
+<html>
+<style>
+table, td {
+    border: 1px solid black;
+}
+</style>
+<body>
+	<!-- Learn about this code on MDN: https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/Sending_forms_through_JavaScript -->
+
+<form id="myForm">
+  <label for="myName">Search skype login by email or name:</label>
+  <input id="myName" name="searchstring" value="John Vickers">
+  <input type="submit" value="Search!">
+</form>
+
+<div>
+    <table id="apps">
+      <tr><td>avatar</td><td>skypeId</td><td>name</td><td>avatarUrl</td><td>countryCode</td><td>contactType</td></tr>
+    </table>
+</div>
+
+</body>
+
+<script>
+window.addEventListener("load", function () {
+  function sendData() {
+    var XHR = new XMLHttpRequest();
+
+    // Define what happens on successful data submission
+    XHR.addEventListener("load", function(event) {
+      showResult(event.target.responseText);
+    });
+
+    // Define what happens in case of error
+    XHR.addEventListener("error", function(event) {
+      alert('Oups! Something goes wrong.');
+    });
+
+    // Set up our request
+    XHR.open("GET", "http://localhost:81/skype_search?name="+document.getElementById("myName").value);
+    // The data sent is what the user provided in the form
+    XHR.send();
+  }
+ 
+  // Access the form element...
+  var form = document.getElementById("myForm");
+
+  // ...and take over its submit event.
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    sendData();
+  });
+});
+
+function showResult(test) {
+var dataObj = JSON.parse(test);
+
+var dictionaryData = dataObj["results"];
+var table = document.getElementById("apps");
+
+for (var i in dictionaryData) {  
+  var tr = document.createElement("tr");
+    var img = document.createElement('img');
+    img.src = dictionaryData[i]["nodeProfileData"]["avatarUrl"];
+    img.setAttribute("width", "96");
+    var td = document.createElement("td");
+    td.appendChild(img);
+    tr.appendChild(td);
+  for (var key in dictionaryData[i]["nodeProfileData"]) {
+    var txt = document.createTextNode(dictionaryData[i]["nodeProfileData"][key]);
+    td = document.createElement("td");
+    td.appendChild(txt);
+    tr.appendChild(td);
+  }
+  table.appendChild(tr);
+}
+}
+
+</script>
+
+</html>
