@@ -1,0 +1,50 @@
+<html>
+<body>
+	<!-- Learn about this code on MDN: https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/Sending_forms_through_JavaScript -->
+
+<form id="myForm">
+  <label for="myName">Search skype login by email or name:</label>
+  <input id="myName" name="searchstring" value="John Vickers">
+  <input type="submit" value="Search!">
+</form>
+</body>
+
+<script>
+window.addEventListener("load", function () {
+  function sendData() {
+    var XHR = new XMLHttpRequest();
+
+    // Define what happens on successful data submission
+    XHR.addEventListener("load", function(event) {
+      document.write(event.target.responseText);
+    });
+
+    // Define what happens in case of error
+    XHR.addEventListener("error", function(event) {
+      alert('Oups! Something goes wrong.');
+    });
+
+    // Set up our request
+    XHR.open("GET", "https://skypegraph.skype.com/search/v1.1/namesearch/swx/?requestid=skype&searchstring="+document.getElementById("myName").value);
+    
+    XHR.setRequestHeader("x-skypetoken", "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IjEyIn0.eyJpYXQiOjE0OTg3NTA1NTUsImV4cCI6MTQ5ODgyMjU1MCwic2t5cGVpZCI6ImxpdmU6Ymlnd2ViYXBwc18xIiwic2NwIjo5NTgsImNzaSI6IjAiLCJjaWQiOiJkNTRiODlhNjYzY2JkYmM2IiwiYWF0IjoxNDk4NzM2MTUwfQ.uWD_RBCZqhBgRrRs-Czvy8G0TGYvQ9KQ0U-b_wcL21Tj9dbsiP7LyF5YKQuIRsweRQy0ag4oT1PpREU1AztWUiPbYIIzH-PH1hAV4crHRWLuxvA5oaBDSn68njIxo6lXhs9zfr7xqetMQalYQ2Cn9WQJPiSWLw3uxGTAfPcvHvd4nWntvAGUVwsf3LF_z1Or-T-JGCKJkJdkx1m5");
+    XHR.setRequestHeader('Content-Type','text/plain');
+
+    // The data sent is what the user provided in the form
+    XHR.send();
+  }
+ 
+  // Access the form element...
+  var form = document.getElementById("myForm");
+
+  // ...and take over its submit event.
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    sendData();
+  });
+});
+
+</script>
+
+</html>
